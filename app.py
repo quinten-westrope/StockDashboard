@@ -2,15 +2,25 @@
 import streamlit as st
 import pandas as pd
 import yfinance as yf
-import plotly.express as px
+import plotly.graph_objects as go
 
 # Page configuration
 st.set_page_config(
-    page_title = 'Stock Dashboard',
-    layout = 'centered',
-    page_icon = '📈'
-    )
+    page_title='Stock Dashboard',
+    layout='centered',
+    page_icon='📈'
+)
 
+# Hide Streamlit style
+hide_st_style = """
+<style>
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    .stApp { padding: 0; }
+</style>
+"""
+st.markdown(hide_st_style, unsafe_allow_html=True)
 
 # Title of the app
 st.title('Stock Dashboard')
@@ -22,63 +32,84 @@ default_ticker = 'MSFT'
 default_end_date = pd.to_datetime('today')
 default_start_date = default_end_date - pd.DateOffset(years=1)
 
+# Main section for entering initial ticker and date range
+ticker = st.text_input('Enter Ticker', default_ticker)
+start_date = st.date_input('Start Date', default_start_date)
+end_date = st.date_input('End Date', default_end_date)
 
-# Sidebar
-ticker = st.sidebar.text_input('Ticker', default_ticker)
-start_date = st.sidebar.date_input('Start Date', default_start_date)
-end_date = st.sidebar.date_input('End Date', default_end_date)
+# Function to fetch and display data for single ticker
+def fetch_and_display_data(ticker, start_date, end_date):
+    # Fetching the data
+    data = yf.download(ticker, start=start_date, end=end_date)
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=data.index, y=data['Close'], mode='lines', name=ticker))
 
-# Fetching the data
-data = yf.download(ticker, start=start_date, end=end_date)
-fig = px.line(data, x = data.index, y = data['Close'], title=ticker)
+   # Layout settings
+    fig.update_layout(
+        title={
+            'text': ticker,
+            'x': 0.5,  # Set title x-coordinate to center it
+            'xanchor': 'center',  # Anchor title to center
+            'yanchor': 'top'  # Align title to the top of the plot
+        },
+        xaxis_title='',  # Remove x-axis title
+        yaxis_title='Price'
+    )
 
-# Centering the title
-fig.update_layout(
-    title={
-        'text': ticker,
-        'x': 0.5,  # Set title x-coordinate to center it
-        'xanchor': 'center',  # Anchor title to center
-        'yanchor': 'top'  # Align title to the top of the plot
-    }
-)
+    # Display the plot
+    st.plotly_chart(fig)
 
-# Removing the x-axis label
-fig.update_xaxes(title_text='')
+# Function to fetch and display comparison data for two tickers
+def fetch_and_display_comparison(ticker1, ticker2, start_date, end_date):
+    # Fetching the data for both tickers
+    data1 = yf.download(ticker1, start=start_date, end=end_date)
+    data2 = yf.download(ticker2, start=start_date, end=end_date)
 
-st.plotly_chart(fig)
-
+    # Creating traces for each ticker
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=data1.index, y=data1['Close'], mode='lines', name=ticker1))
+    fig.add_trace(go.Scatter(x=data2.index, y=data2['Close'], mode='lines', name=ticker2))
 
 
-# creating tab
-pricing_data = st.tabs(['Pricing Data'])
+    # Layout settings
+    fig.update_layout(
+        title={
+            'text': f'{ticker1} & {ticker2} Comparison',
+            'x': 0.5,  # Set title x-coordinate to center it
+            'xanchor': 'center',  # Anchor title to center
+            'yanchor': 'top'  # Align title to the top of the plot
+        },
+        xaxis_title='',  # Remove x-axis title
+        yaxis_title='Price'
+    )
 
-# Information under pricing data tab
-with pricing_data[0]:
-    st.header('Price Movement')
     
-    # Creating a copy of the data
-    data2 = data
+    # Display the plot
+    st.plotly_chart(fig)
 
-    # Adding a new column for % change
-    data2['% Change'] = data['Adj Close'] / data['Adj Close'].shift(1)
-    data2.dropna(inplace=True)
-    st.write(data2)
+# Analyze button to trigger main graph display
+if st.button('Analyze', key='analyze'):
+    fetch_and_display_data(ticker, start_date, end_date)
 
-    # Annual return
-    # annual_return = data2['% Change'].mean() * 252 * 100
-    # st.write('Annual Return: ', annual_return, '%')
-    
+# Dropdown for Pricing Data section
+with st.expander('Pricing Movement'):
+   
+    data = yf.download(ticker, start=start_date, end=end_date)
+    st.header(f'{ticker} Price Movement')
+    st.write(data)
 
-# Information under news data tab
-# with news_data:
-#     st.header(f'News of {ticker}')
-#     sn = StockNews(ticker, save_news = False)
-#     df_news = sn.read_rss()
+# Compare section
+st.header('Compare Stocks')
 
-#     df_news
-#     for i in range(15):
-#         st.subheader(f'News {i+1}')
-#         st.write(df_news['published'][i])
-#         st.write(df_news['title'][i])
-#         st.write(df_news['summary'][i])
-#         st.write(df_news['link'][i])
+ticker2 = st.text_input('Enter Ticker 2', '')
+
+# Compare button
+compare_button = st.button('Compare')
+
+# Handle Compare button click
+if compare_button:
+    if ticker2:
+        # Display comparison chart
+        fetch_and_display_comparison(ticker, ticker2, start_date, end_date)
+    else:
+        st.warning('Please enter Ticker 2 to compare.')
