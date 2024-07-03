@@ -3,12 +3,18 @@ import streamlit as st
 import pandas as pd
 import yfinance as yf
 import plotly.graph_objects as go
+from newsapi import NewsApiClient
+import re
+
+# Setting up the News API
+newsapi = NewsApiClient(api_key='b2a3c3ba1d7d496999f014d7313ca511')
+
 
 # Page configuration
 st.set_page_config(
     page_title='Stock Dashboard',
     layout='centered',
-    page_icon='📈'
+    page_icon='📈',
 )
 
 # Hide Streamlit style
@@ -33,16 +39,17 @@ default_end_date = pd.to_datetime('today')
 default_start_date = default_end_date - pd.DateOffset(years=1)
 
 # Main section for entering initial ticker and date range
-ticker = st.text_input('Enter Ticker', default_ticker)
+ticker = st.text_input('Enter Ticker', default_ticker).upper()
 start_date = st.date_input('Start Date', default_start_date)
 end_date = st.date_input('End Date', default_end_date)
+
 
 # Function to fetch and display data for single ticker
 def fetch_and_display_data(ticker, start_date, end_date):
     # Fetching the data
     data = yf.download(ticker, start=start_date, end=end_date)
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=data.index, y=data['Close'], mode='lines', name=ticker))
+    fig.add_trace(go.Scatter(x=data.index, y=data['Close'], mode='lines', name=ticker.upper()))
 
    # Layout settings
     fig.update_layout(
@@ -67,8 +74,8 @@ def fetch_and_display_comparison(ticker1, ticker2, start_date, end_date):
 
     # Creating traces for each ticker
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=data1.index, y=data1['Close'], mode='lines', name=ticker1))
-    fig.add_trace(go.Scatter(x=data2.index, y=data2['Close'], mode='lines', name=ticker2))
+    fig.add_trace(go.Scatter(x=data1.index, y=data1['Close'], mode='lines', name=ticker1.upper()))
+    fig.add_trace(go.Scatter(x=data2.index, y=data2['Close'], mode='lines', name=ticker2.upper()))
 
 
     # Layout settings
@@ -98,10 +105,38 @@ with st.expander('Pricing Movement'):
     st.header(f'{ticker} Price Movement')
     st.write(data)
 
+
+# Function to filter relevant news articles
+def filter_relevant_news(articles, ticker):
+    relevant_articles = []
+    for article in articles:
+        if article['description'] and re.search(ticker, article['description'], re.IGNORECASE):
+            relevant_articles.append(article)
+    return relevant_articles
+
+# Dropdown for News section
+with st.expander('News'):
+    # Fetching the news
+    all_news = newsapi.get_everything(q=ticker, language='en', sort_by='relevancy', page_size=50)
+    filtered_news = filter_relevant_news(all_news['articles'], ticker)
+
+    if filtered_news:
+        st.header(f'Related News')
+        for article in filtered_news[:10]:  # Display top 10 relevant articles
+            if article['title'] and article['description'] and article['url']:
+                st.subheader(article['title'])
+                st.write(article['description'])
+                st.markdown(f"[Read more]({article['url']})")
+            else:
+                st.write("Some news articles could not be displayed due to missing information.")
+    else:
+        st.write(f"No relevant news articles found for {ticker}.")
+
+
 # Compare section
 st.header('Compare Stocks')
 
-ticker2 = st.text_input('Enter Ticker 2', '')
+ticker2 = st.text_input('Enter Ticker 2', '').upper()
 
 # Compare button
 compare_button = st.button('Compare')
