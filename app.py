@@ -38,10 +38,12 @@ default_ticker = 'MSFT'
 default_end_date = pd.to_datetime('today')
 default_start_date = default_end_date - pd.DateOffset(years=1)
 
+max_date = pd.to_datetime('today')
+
 # Main section for entering initial ticker and date range
 ticker = st.text_input('Enter Ticker', default_ticker).upper()
-start_date = st.date_input('Start Date', default_start_date)
-end_date = st.date_input('End Date', default_end_date)
+start_date = st.date_input('Start Date', default_start_date, max_value=max_date, min_value=pd.Timestamp('1900-01-01'))
+end_date = st.date_input('End Date', default_end_date, max_value=max_date, min_value=pd.Timestamp('1900-01-01'))
 
 
 # Function to fetch and display data for single ticker
