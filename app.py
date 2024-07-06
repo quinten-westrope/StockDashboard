@@ -3,11 +3,6 @@ import streamlit as st
 import pandas as pd
 import yfinance as yf
 import plotly.graph_objects as go
-from newsapi import NewsApiClient
-import re
-
-# Setting up the News API
-newsapi = NewsApiClient(api_key='b2a3c3ba1d7d496999f014d7313ca511')
 
 
 # Page configuration
@@ -107,32 +102,6 @@ with st.expander('Pricing Movement'):
     st.header(f'{ticker} Price Movement')
     st.write(data)
 
-
-# Function to filter relevant news articles
-def filter_relevant_news(articles, ticker):
-    relevant_articles = []
-    for article in articles:
-        if article['description'] and re.search(ticker, article['description'], re.IGNORECASE):
-            relevant_articles.append(article)
-    return relevant_articles
-
-# Dropdown for News section
-with st.expander('News'):
-    # Fetching the news
-    all_news = newsapi.get_everything(q=ticker, language='en', sort_by='relevancy', page_size=50)
-    filtered_news = filter_relevant_news(all_news['articles'], ticker)
-
-    if filtered_news:
-        st.header(f'Related News')
-        for article in filtered_news[:10]:  # Display top 10 relevant articles
-            if article['title'] and article['description'] and article['url']:
-                st.subheader(article['title'])
-                st.write(article['description'])
-                st.markdown(f"[Read more]({article['url']})")
-            else:
-                st.write("Some news articles could not be displayed due to missing information.")
-    else:
-        st.write(f"No relevant news articles found for {ticker}.")
 
 
 # Compare section
